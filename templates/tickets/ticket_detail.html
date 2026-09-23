@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Заявка №{{ ticket.pk }} — HelpDesk{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'tickets:list' %}">← К списку заявок</a></p>
+
+<div class="card">
+    <h1>Заявка №{{ ticket.pk }}: {{ ticket.title }}</h1>
+
+    <p><strong>Статус:</strong> {{ ticket.get_status_display }}</p>
+    <p><strong>Приоритет:</strong> {{ ticket.get_priority_display }}</p>
+    <p><strong>Категория:</strong> {{ ticket.category }}</p>
+    <p>
+        <strong>Оборудование:</strong>
+        {{ ticket.equipment|default:"Не указано" }}
+    </p>
+    <p><strong>Заказчик:</strong> {{ ticket.customer }}</p>
+    <p>
+        <strong>Исполнитель:</strong>
+        {{ ticket.assignee|default:"Не назначен" }}
+    </p>
+    <p>
+        <strong>Создана:</strong>
+        {{ ticket.created_at|date:"d.m.Y H:i" }}
+    </p>
+    <p>
+        <strong>Срок выполнения:</strong>
+        {% if ticket.due_at %}
+            {{ ticket.due_at|date:"d.m.Y H:i" }}
+        {% else %}
+            Не установлен
+        {% endif %}
+    </p>
+
+    <h2>Описание проблемы</h2>
+    {{ ticket.description|linebreaks }}
+</div>
+{% if status_actions %}
+    <div class="card" style="margin-top: 20px;">
+        <h2>Действия</h2>
+
+        {% for status_value, button_label in status_actions.items %}
+            <form
+                method="post"
+                action="{% url 'tickets:status' ticket.pk %}"
+            >
+                {% csrf_token %}
+                <input
+                    type="hidden"
+                    name="status"
+                    value="{{ status_value }}"
+                >
+                <button type="submit">{{ button_label }}</button>
+            </form>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="card" style="margin-top: 20px;">
+    <h2>История статусов</h2>
+
+    {% for event in status_history %}
+        <p>
+            <strong>{{ event.created_at|date:"d.m.Y H:i" }}</strong>
+            · {{ event.actor }}:
+            {{ event.get_old_status_display }}
+            → {{ event.get_new_status_display }}
+        </p>
+    {% empty %}
+        <p>Статус пока не менялся.</p>
+    {% endfor %}
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h2>Обсуждение</h2>
+
+    {% for comment in comments %}
+        <article style="padding: 16px 0; border-bottom: 1px solid #e5e9f0;">
+            <strong>{{ comment.author }}</strong>
+            <small>
+                · {{ comment.created_at|date:"d.m.Y H:i" }}
+            </small>
+
+            <div style="overflow-wrap: anywhere;">
+                {{ comment.text|linebreaks }}
+            </div>
+        </article>
+    {% empty %}
+        <p>Комментариев пока нет. Начните обсуждение.</p>
+    {% endfor %}
+
+    <h3>Добавить комментарий</h3>
+
+    <form
+        method="post"
+        action="{% url 'tickets:comment_create' ticket.pk %}"
+    >
+        {% csrf_token %}
+        {{ comment_form.as_p }}
+
+        <button type="submit">Отправить</button>
+    </form>
+</div>
+{% endblock %}

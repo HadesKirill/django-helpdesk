@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Новая заявка — HelpDesk{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'tickets:list' %}">← К списку заявок</a></p>
+
+<div class="card">
+    <h1>Новая заявка</h1>
+    <p>Опишите проблему. Исполнителя назначит администратор.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+
+        <button type="submit">Создать заявку</button>
+    </form>
+</div>
+{% endblock %}
