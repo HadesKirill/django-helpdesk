@@ -1,7 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Equipment, Ticket
-
+from .models import Category, Equipment, Ticket, TicketStatusHistory
 
 @admin.register(Equipment)
 class EquipmentAdmin(admin.ModelAdmin):
@@ -35,6 +34,26 @@ class TicketAdmin(admin.ModelAdmin):
         "customer__username",
         "assignee__username",
     )
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("status", "created_at", "updated_at")
     list_select_related = ("customer", "assignee")
     list_per_page = 25
+
+@admin.register(TicketStatusHistory)
+class TicketStatusHistoryAdmin(admin.ModelAdmin):
+    list_display = (
+        "ticket",
+        "old_status",
+        "new_status",
+        "actor",
+        "created_at",
+    )
+    list_select_related = ("ticket", "actor")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

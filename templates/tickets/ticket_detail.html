@@ -36,4 +36,39 @@
     <h2>Описание проблемы</h2>
     {{ ticket.description|linebreaks }}
 </div>
+{% if status_actions %}
+    <div class="card" style="margin-top: 20px;">
+        <h2>Действия</h2>
+
+        {% for status_value, button_label in status_actions.items %}
+            <form
+                method="post"
+                action="{% url 'tickets:status' ticket.pk %}"
+            >
+                {% csrf_token %}
+                <input
+                    type="hidden"
+                    name="status"
+                    value="{{ status_value }}"
+                >
+                <button type="submit">{{ button_label }}</button>
+            </form>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<div class="card" style="margin-top: 20px;">
+    <h2>История статусов</h2>
+
+    {% for event in status_history %}
+        <p>
+            <strong>{{ event.created_at|date:"d.m.Y H:i" }}</strong>
+            · {{ event.actor }}:
+            {{ event.get_old_status_display }}
+            → {{ event.get_new_status_display }}
+        </p>
+    {% empty %}
+        <p>Статус пока не менялся.</p>
+    {% endfor %}
+</div>
 {% endblock %}

@@ -10,6 +10,12 @@ from accounts.models import User
 from .forms import TicketCreateForm
 from .models import Ticket
 
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.shortcuts import get_object_or_404, redirect
+from django.views import View
+
+from .services import change_ticket_status, get_status_actions
 
 class TicketAccessMixin:
     """Общий отбор доступных заявок для списка и подробностей."""
@@ -56,6 +62,19 @@ class TicketDetailView(
     template_name = "tickets/ticket_detail.html"
     context_object_name = "ticket"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        context["status_actions"] = get_status_actions(
+            self.object,
+            self.request.user,
+        )
+        context["status_history"] = (
+            self.object.status_history.select_related("actor")
+        )
+
+        return context
+
 
 class TicketCreateView(
     LoginRequiredMixin,
@@ -80,3 +99,29 @@ class TicketCreateView(
             "tickets:detail",
             kwargs={"pk": self.object.pk},
         )
+
+class TicketStatusUpdateView(
+    LoginRequiredMixin,
+    TicketAccessMixin,
+    View,
+):
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        ticket = get_object_or_404(
+            self.get_queryset(),
+            pk=kwargs["pk"],
+        )
+
+        try:
+            change_ticket_status(
+                ticket_id=ticket.pk,
+                actor=request.user,
+                new_status=request.POST.get("status", ""),
+            )
+        except ValidationError as error:
+            messages.error(request, error.messages[0])
+        else:
+            messages.success(request, "Статус заявки обновлён.")
+
+        return redirect("tickets:detail", pk=ticket.pk)

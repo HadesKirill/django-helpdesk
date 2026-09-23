@@ -118,3 +118,43 @@ class Ticket(models.Model):
 
     def __str__(self):
         return self.title
+
+class TicketStatusHistory(models.Model):
+    ticket = models.ForeignKey(
+        Ticket,
+        verbose_name="Заявка",
+        on_delete=models.CASCADE,
+        related_name="status_history",
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Кто изменил",
+        on_delete=models.PROTECT,
+        related_name="ticket_status_changes",
+    )
+    old_status = models.CharField(
+        "Предыдущий статус",
+        max_length=20,
+        choices=Ticket.Status.choices,
+    )
+    new_status = models.CharField(
+        "Новый статус",
+        max_length=20,
+        choices=Ticket.Status.choices,
+    )
+    created_at = models.DateTimeField(
+        "Дата изменения",
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = "Изменение статуса"
+        verbose_name_plural = "История статусов"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self):
+        return (
+            f"Заявка №{self.ticket_id}: "
+            f"{self.get_old_status_display()} → "
+            f"{self.get_new_status_display()}"
+        )

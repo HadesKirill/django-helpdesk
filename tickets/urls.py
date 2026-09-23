@@ -4,6 +4,7 @@ from .views import (
     TicketCreateView,
     TicketDetailView,
     TicketListView,
+    TicketStatusUpdateView,
 )
 
 app_name = "tickets"
@@ -19,5 +20,10 @@ urlpatterns = [
         "tickets/<int:pk>/",
         TicketDetailView.as_view(),
         name="detail",
+    ),
+        path(
+        "tickets/<int:pk>/status/",
+        TicketStatusUpdateView.as_view(),
+        name="status",
     ),
 ]

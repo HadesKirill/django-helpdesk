@@ -101,6 +101,12 @@
 </header>
 
 <main>
+    {% for message in messages %}
+        <div class="card" role="status" style="margin-bottom: 16px;">
+            {{ message }}
+        </div>
+    {% endfor %}
+
     {% block content %}{% endblock %}
 </main>
 </body>
