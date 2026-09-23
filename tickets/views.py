@@ -7,7 +7,7 @@ from django.views.generic import CreateView, DetailView, ListView
 
 from accounts.models import User
 
-from .forms import TicketCreateForm
+from .forms import CommentForm, TicketCreateForm
 from .models import Ticket
 
 from django.contrib import messages
@@ -72,7 +72,10 @@ class TicketDetailView(
         context["status_history"] = (
             self.object.status_history.select_related("actor")
         )
-
+        context["comments"] = (
+            self.object.comments.select_related("author")
+        )
+        context["comment_form"] = CommentForm()
         return context
 
 
@@ -125,3 +128,29 @@ class TicketStatusUpdateView(
             messages.success(request, "Статус заявки обновлён.")
 
         return redirect("tickets:detail", pk=ticket.pk)
+
+
+class TicketCommentCreateView(TicketDetailView):
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = CommentForm(request.POST)
+
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.ticket = self.object
+            comment.author = request.user
+            comment.save()
+
+            messages.success(request, "Комментарий добавлен.")
+
+            return redirect(
+                "tickets:detail",
+                pk=self.object.pk,
+            )
+
+        context = self.get_context_data()
+        context["comment_form"] = form
+
+        return self.render_to_response(context, status=400)

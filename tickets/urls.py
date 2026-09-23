@@ -5,6 +5,7 @@ from .views import (
     TicketDetailView,
     TicketListView,
     TicketStatusUpdateView,
+    TicketCommentCreateView,
 )
 
 app_name = "tickets"
@@ -21,9 +22,14 @@ urlpatterns = [
         TicketDetailView.as_view(),
         name="detail",
     ),
-        path(
+    path(
         "tickets/<int:pk>/status/",
         TicketStatusUpdateView.as_view(),
         name="status",
+    ),
+    path(
+        "tickets/<int:pk>/comments/add/",
+        TicketCommentCreateView.as_view(),
+        name="comment_create",
     ),
 ]

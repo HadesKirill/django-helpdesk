@@ -71,4 +71,35 @@
         <p>Статус пока не менялся.</p>
     {% endfor %}
 </div>
+
+<div class="card" style="margin-top: 20px;">
+    <h2>Обсуждение</h2>
+
+    {% for comment in comments %}
+        <article style="padding: 16px 0; border-bottom: 1px solid #e5e9f0;">
+            <strong>{{ comment.author }}</strong>
+            <small>
+                · {{ comment.created_at|date:"d.m.Y H:i" }}
+            </small>
+
+            <div style="overflow-wrap: anywhere;">
+                {{ comment.text|linebreaks }}
+            </div>
+        </article>
+    {% empty %}
+        <p>Комментариев пока нет. Начните обсуждение.</p>
+    {% endfor %}
+
+    <h3>Добавить комментарий</h3>
+
+    <form
+        method="post"
+        action="{% url 'tickets:comment_create' ticket.pk %}"
+    >
+        {% csrf_token %}
+        {{ comment_form.as_p }}
+
+        <button type="submit">Отправить</button>
+    </form>
+</div>
 {% endblock %}

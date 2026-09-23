@@ -4,7 +4,7 @@ from django.urls import reverse
 from unittest.mock import patch
 
 from .services import change_ticket_status
-from .models import Category, Ticket
+from .models import Category, Comment, Ticket
 
 User = get_user_model()
 
@@ -337,3 +337,118 @@ class TicketListAccessTests(TestCase):
         ticket.refresh_from_db()
         self.assertEqual(ticket.status, Ticket.Status.NEW)
         self.assertFalse(ticket.status_history.exists())
+
+    def test_ticket_participants_can_comment(self):
+        ticket = self.assigned_ticket
+        url = reverse(
+            "tickets:comment_create",
+            kwargs={"pk": ticket.pk},
+        )
+
+        for user in [self.customer, self.technician, self.admin]:
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+
+                response = self.client.post(
+                    url,
+                    {"text": f"Сообщение от {user.username}"},
+                )
+
+                self.assertRedirects(
+                    response,
+                    reverse("tickets:detail", kwargs={"pk": ticket.pk}),
+                )
+                self.assertTrue(
+                    ticket.comments.filter(
+                        author=user,
+                        text=f"Сообщение от {user.username}",
+                    ).exists()
+                )
+
+        self.assertEqual(ticket.comments.count(), 3)
+
+    def test_comment_author_and_ticket_cannot_be_overridden(self):
+        self.client.force_login(self.customer)
+
+        response = self.client.post(
+            reverse(
+                "tickets:comment_create",
+                kwargs={"pk": self.assigned_ticket.pk},
+            ),
+            {
+                "text": "Комментарий с подменой параметров",
+                "author": self.admin.pk,
+                "ticket": self.other_ticket.pk,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+
+        comment = Comment.objects.get(
+            text="Комментарий с подменой параметров",
+        )
+        self.assertEqual(comment.author_id, self.customer.pk)
+        self.assertEqual(comment.ticket_id, self.assigned_ticket.pk)
+
+    def test_outsiders_and_guest_cannot_comment(self):
+        url = reverse(
+            "tickets:comment_create",
+            kwargs={"pk": self.assigned_ticket.pk},
+        )
+
+        for user in [self.other_customer, self.other_technician]:
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+                response = self.client.post(
+                    url,
+                    {"text": "Чужой комментарий"},
+                )
+                self.assertEqual(response.status_code, 404)
+
+        self.client.logout()
+        response = self.client.post(
+            url,
+            {"text": "Комментарий гостя"},
+        )
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next={url}",
+        )
+        self.assertFalse(Comment.objects.exists())
+
+    def test_invalid_comments_are_not_saved(self):
+        self.client.force_login(self.customer)
+        url = reverse(
+            "tickets:comment_create",
+            kwargs={"pk": self.assigned_ticket.pk},
+        )
+
+        for text in ["", "   ", "x" * 2001]:
+            with self.subTest(length=len(text)):
+                response = self.client.post(url, {"text": text})
+
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(
+                    "text",
+                    response.context["comment_form"].errors,
+                )
+
+        self.assertFalse(Comment.objects.exists())
+
+    def test_comment_html_is_escaped(self):
+        Comment.objects.create(
+            ticket=self.assigned_ticket,
+            author=self.customer,
+            text="<script>alert('test')</script>",
+        )
+        self.client.force_login(self.customer)
+
+        response = self.client.get(
+            reverse(
+                "tickets:detail",
+                kwargs={"pk": self.assigned_ticket.pk},
+            )
+        )
+
+        self.assertContains(response, "&lt;script&gt;")
+        self.assertNotContains(response, "<script>")

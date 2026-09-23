@@ -158,3 +158,33 @@ class TicketStatusHistory(models.Model):
             f"{self.get_old_status_display()} → "
             f"{self.get_new_status_display()}"
         )
+
+class Comment(models.Model):
+    ticket = models.ForeignKey(
+        Ticket,
+        verbose_name="Заявка",
+        on_delete=models.CASCADE,
+        related_name="comments",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="Автор",
+        on_delete=models.PROTECT,
+        related_name="ticket_comments",
+    )
+    text = models.TextField(
+        "Комментарий",
+        max_length=2000,
+    )
+    created_at = models.DateTimeField(
+        "Дата создания",
+        auto_now_add=True,
+    )
+
+    class Meta:
+        verbose_name = "Комментарий"
+        verbose_name_plural = "Комментарии"
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"Комментарий #{self.pk} к заявке #{self.ticket_id}"
