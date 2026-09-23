@@ -93,3 +93,34 @@
   но не является неизменяемым журналом аудита.
 - Регистрация пользователей пока выполняется администратором.
 
+## Запуск через Docker на Windows
+
+
+```powershell
+docker compose build
+docker compose run --rm web python manage.py migrate
+docker compose up -d
+```
+
+Сайт: http://127.0.0.1:8000/
+
+
+Запуск тестов:
+
+```powershell
+docker compose run --rm web python manage.py test
+```
+
+Остановка:
+
+```powershell
+docker compose down
+```
+
+Конфигурация предназначена для локальной разработки.
+Папка проекта подключается к /app через bind mount.
+SQLite-база хранится в db.sqlite3 на компьютере и сохраняется
+после удаления контейнера.
+
+.env, база данных и локальное виртуальное окружение
+не включаются в Docker-образ.
