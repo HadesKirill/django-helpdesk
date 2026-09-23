@@ -1,7 +1,6 @@
 from django import forms
 
-from .models import Comment, Ticket
-
+from .models import Category, Comment, Ticket
 
 class TicketCreateForm(forms.ModelForm):
     class Meta:
@@ -39,3 +38,35 @@ class CommentForm(forms.ModelForm):
             )
 
         return text
+
+class TicketFilterForm(forms.Form):
+    q = forms.CharField(
+        label="Поиск",
+        required=False,
+        max_length=100,
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Название, описание или инвентарный номер",
+            }
+        ),
+    )
+    status = forms.ChoiceField(
+        label="Статус",
+        required=False,
+        choices=[("", "Все статусы")] + list(Ticket.Status.choices),
+    )
+    priority = forms.ChoiceField(
+        label="Приоритет",
+        required=False,
+        choices=[("", "Все приоритеты")] + list(Ticket.Priority.choices),
+    )
+    category = forms.ModelChoiceField(
+        label="Категория",
+        required=False,
+        queryset=Category.objects.all(),
+        empty_label="Все категории",
+    )
+    overdue = forms.BooleanField(
+        label="Только просроченные",
+        required=False,
+    )

@@ -7,7 +7,7 @@ from django.views.generic import CreateView, DetailView, ListView
 
 from accounts.models import User
 
-from .forms import CommentForm, TicketCreateForm
+from .forms import CommentForm, TicketCreateForm, TicketFilterForm
 from .models import Ticket
 
 from django.contrib import messages
@@ -16,6 +16,9 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 
 from .services import change_ticket_status, get_status_actions
+
+from django.db.models import Count, Q
+from django.utils import timezone
 
 class TicketAccessMixin:
     """Общий отбор доступных заявок для списка и подробностей."""
@@ -51,6 +54,66 @@ class TicketListView(
     template_name = "tickets/ticket_list.html"
     context_object_name = "tickets"
     paginate_by = 10
+
+    def get_queryset(self):
+        # Сначала ограничиваем доступ, затем применяем поиск.
+        self.visible_tickets = super().get_queryset()
+
+        self.active_filter = Q(
+            status__in=[
+                Ticket.Status.NEW,
+                Ticket.Status.IN_PROGRESS,
+            ]
+        )
+        self.overdue_filter = (
+            self.active_filter & Q(due_at__lt=timezone.now())
+        )
+
+        self.filter_form = TicketFilterForm(self.request.GET)
+        queryset = self.visible_tickets
+
+        if not self.filter_form.is_valid():
+            return queryset.none()
+
+        filters = self.filter_form.cleaned_data
+        search = filters["q"]
+
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search)
+                | Q(description__icontains=search)
+                | Q(equipment__inventory_number__icontains=search)
+            )
+
+        if filters["status"]:
+            queryset = queryset.filter(status=filters["status"])
+
+        if filters["priority"]:
+            queryset = queryset.filter(priority=filters["priority"])
+
+        if filters["category"]:
+            queryset = queryset.filter(category=filters["category"])
+
+        if filters["overdue"]:
+            queryset = queryset.filter(self.overdue_filter)
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["filter_form"] = self.filter_form
+
+        context["stats"] = self.visible_tickets.aggregate(
+            total=Count("pk"),
+            active=Count("pk", filter=self.active_filter),
+            resolved=Count(
+                "pk",
+                filter=Q(status=Ticket.Status.RESOLVED),
+            ),
+            overdue=Count("pk", filter=self.overdue_filter),
+        )
+
+        return context
 
 
 class TicketDetailView(

@@ -71,6 +71,36 @@
             margin-top: 24px;
             align-items: center;
         }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-number {
+            display: block;
+            margin-top: 12px;
+            font-size: 34px;
+        }
+
+        .overdue-number {
+            color: #b42318;
+        }
+
+        .filter-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        input[type="checkbox"] {
+            display: inline-block;
+            width: auto;
+            margin: 0 8px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>

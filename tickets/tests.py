@@ -6,6 +6,10 @@ from unittest.mock import patch
 from .services import change_ticket_status
 from .models import Category, Comment, Ticket
 
+from datetime import timedelta
+
+from django.utils import timezone
+
 User = get_user_model()
 
 
@@ -452,3 +456,161 @@ class TicketListAccessTests(TestCase):
 
         self.assertContains(response, "&lt;script&gt;")
         self.assertNotContains(response, "<script>")
+
+    def test_search_does_not_expose_other_customers_tickets(self):
+        self.client.force_login(self.customer)
+
+        response = self.client.get(
+            reverse("tickets:list"),
+            {"q": self.other_ticket.title},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page_obj"].paginator.count, 0)
+        self.assertNotContains(
+            response,
+            reverse(
+                "tickets:detail",
+                kwargs={"pk": self.other_ticket.pk},
+            ),
+        )
+
+        response = self.client.get(
+            reverse("tickets:list"),
+            {"q": self.assigned_ticket.description},
+        )
+
+        self.assertCountEqual(
+            response.context["tickets"],
+            [self.assigned_ticket],
+        )
+
+    def test_filters_work_together(self):
+        ticket = self.assigned_ticket
+        ticket.status = Ticket.Status.IN_PROGRESS
+        ticket.priority = Ticket.Priority.HIGH
+        ticket.save()
+
+        self.client.force_login(self.customer)
+        response = self.client.get(
+            reverse("tickets:list"),
+            {
+                "status": Ticket.Status.IN_PROGRESS,
+                "priority": Ticket.Priority.HIGH,
+                "category": ticket.category_id,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertCountEqual(
+            response.context["tickets"],
+            [ticket],
+        )
+
+    def test_invalid_filter_shows_error(self):
+        self.client.force_login(self.customer)
+
+        response = self.client.get(
+            reverse("tickets:list"),
+            {"status": "unknown_status"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "status",
+            response.context["filter_form"].errors,
+        )
+        self.assertEqual(response.context["page_obj"].paginator.count, 0)
+
+    def test_overdue_filter_excludes_finished_and_undated_tickets(self):
+        past = timezone.now() - timedelta(days=1)
+        future = timezone.now() + timedelta(days=1)
+
+        Ticket.objects.filter(
+            pk__in=[
+                self.assigned_ticket.pk,
+                self.other_ticket.pk,
+            ]
+        ).update(due_at=past)
+
+        category_id = self.assigned_ticket.category_id
+
+        for status in [Ticket.Status.RESOLVED, Ticket.Status.CLOSED]:
+            Ticket.objects.create(
+                title=f"Завершённая заявка {status}",
+                description="Срок уже прошёл",
+                customer=self.customer,
+                category_id=category_id,
+                status=status,
+                due_at=past,
+            )
+
+        Ticket.objects.create(
+            title="Будущая заявка",
+            description="Срок ещё не наступил",
+            customer=self.customer,
+            category_id=category_id,
+            due_at=future,
+        )
+
+        self.client.force_login(self.customer)
+        response = self.client.get(
+            reverse("tickets:list"),
+            {"overdue": "on"},
+        )
+
+        self.assertCountEqual(
+            response.context["tickets"],
+            [self.assigned_ticket],
+        )
+        self.assertEqual(response.context["stats"]["overdue"], 1)
+
+    def test_stats_respect_access_and_ignore_search_filters(self):
+        cases = [
+            (self.customer, 2),
+            (self.technician, 1),
+            (self.admin, 3),
+        ]
+
+        for user, expected_total in cases:
+            with self.subTest(user=user.username):
+                self.client.force_login(user)
+
+                response = self.client.get(
+                    reverse("tickets:list"),
+                    {"q": "no-matching-ticket-123"},
+                )
+
+                self.assertEqual(
+                    response.context["page_obj"].paginator.count,
+                    0,
+                )
+                self.assertEqual(
+                    response.context["stats"]["total"],
+                    expected_total,
+                )
+                self.assertEqual(
+                    response.context["stats"]["active"],
+                    expected_total,
+                )
+
+    def test_pagination_preserves_search(self):
+        for number in range(11):
+            Ticket.objects.create(
+                title=f"printer {number}",
+                description="Проверка поиска по страницам",
+                customer=self.customer,
+                category_id=self.assigned_ticket.category_id,
+            )
+
+        self.client.force_login(self.customer)
+        response = self.client.get(
+            reverse("tickets:list"),
+            {"q": "printer", "page": 2},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["page_obj"].number, 2)
+        self.assertEqual(response.context["page_obj"].paginator.count, 11)
+        self.assertEqual(len(response.context["tickets"]), 1)
+        self.assertContains(response, "?q=printer&amp;page=1")

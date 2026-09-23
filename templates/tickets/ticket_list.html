@@ -4,14 +4,52 @@
 
 {% block content %}
 <h1>Заявки</h1>
+
 {% if user.role == "customer" %}
     <p>
         <a href="{% url 'tickets:create' %}">+ Создать заявку</a>
     </p>
 {% endif %}
-<p>Доступно заявок: {{ page_obj.paginator.count }}</p>
+
+<p>Сводка по всем доступным вам заявкам.</p>
+
+<div class="stats-grid">
+    <div class="card">
+        <span>Всего</span>
+        <strong class="stat-number">{{ stats.total }}</strong>
+    </div>
+    <div class="card">
+        <span>Активные</span>
+        <strong class="stat-number">{{ stats.active }}</strong>
+    </div>
+    <div class="card">
+        <span>Ожидают подтверждения</span>
+        <strong class="stat-number">{{ stats.resolved }}</strong>
+    </div>
+    <div class="card">
+        <span>Просроченные</span>
+        <strong class="stat-number overdue-number">
+            {{ stats.overdue }}
+        </strong>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <h2>Поиск и фильтры</h2>
+
+    <form method="get" action="{% url 'tickets:list' %}">
+        {{ filter_form.as_p }}
+
+        <div class="filter-actions">
+            <button type="submit">Применить</button>
+            <a href="{% url 'tickets:list' %}">Сбросить</a>
+        </div>
+    </form>
+</div>
 
 <div class="card">
+    <h2>Найдено заявок: {{ page_obj.paginator.count }}</h2>
+
     <div class="table-wrapper">
         <table>
             <thead>
@@ -22,6 +60,7 @@
                     <th>Приоритет</th>
                     <th>Заказчик</th>
                     <th>Исполнитель</th>
+                    <th>Срок</th>
                 </tr>
             </thead>
             <tbody>
@@ -36,11 +75,22 @@
                         <td>{{ ticket.get_status_display }}</td>
                         <td>{{ ticket.get_priority_display }}</td>
                         <td>{{ ticket.customer }}</td>
-                        <td>{{ ticket.assignee|default:"Не назначен" }}</td>
+                        <td>
+                            {{ ticket.assignee|default:"Не назначен" }}
+                        </td>
+                        <td>
+                            {% if ticket.due_at %}
+                                {{ ticket.due_at|date:"d.m.Y H:i" }}
+                            {% else %}
+                                Не установлен
+                            {% endif %}
+                        </td>
                     </tr>
                 {% empty %}
                     <tr>
-                        <td colspan="6">Доступных заявок пока нет.</td>
+                        <td colspan="7">
+                            Заявок по заданным условиям нет.
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -50,7 +100,7 @@
     {% if is_paginated %}
         <div class="pagination">
             {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}">
+                <a href="{% querystring page=page_obj.previous_page_number %}">
                     Назад
                 </a>
             {% endif %}
@@ -61,7 +111,7 @@
             </span>
 
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}">
+                <a href="{% querystring page=page_obj.next_page_number %}">
                     Вперёд
                 </a>
             {% endif %}
