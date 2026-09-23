@@ -4,6 +4,11 @@
 
 {% block content %}
 <h1>Заявки</h1>
+{% if user.role == "customer" %}
+    <p>
+        <a href="{% url 'tickets:create' %}">+ Создать заявку</a>
+    </p>
+{% endif %}
 <p>Доступно заявок: {{ page_obj.paginator.count }}</p>
 
 <div class="card">
@@ -23,7 +28,11 @@
                 {% for ticket in tickets %}
                     <tr>
                         <td>{{ ticket.pk }}</td>
-                        <td>{{ ticket.title }}</td>
+                        <td>
+                            <a href="{% url 'tickets:detail' ticket.pk %}">
+                                {{ ticket.title }}
+                            </a>
+                        </td>
                         <td>{{ ticket.get_status_display }}</td>
                         <td>{{ ticket.get_priority_display }}</td>
                         <td>{{ ticket.customer }}</td>

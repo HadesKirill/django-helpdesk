@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Заявка №{{ ticket.pk }} — HelpDesk{% endblock %}
+
+{% block content %}
+<p><a href="{% url 'tickets:list' %}">← К списку заявок</a></p>
+
+<div class="card">
+    <h1>Заявка №{{ ticket.pk }}: {{ ticket.title }}</h1>
+
+    <p><strong>Статус:</strong> {{ ticket.get_status_display }}</p>
+    <p><strong>Приоритет:</strong> {{ ticket.get_priority_display }}</p>
+    <p><strong>Категория:</strong> {{ ticket.category }}</p>
+    <p>
+        <strong>Оборудование:</strong>
+        {{ ticket.equipment|default:"Не указано" }}
+    </p>
+    <p><strong>Заказчик:</strong> {{ ticket.customer }}</p>
+    <p>
+        <strong>Исполнитель:</strong>
+        {{ ticket.assignee|default:"Не назначен" }}
+    </p>
+    <p>
+        <strong>Создана:</strong>
+        {{ ticket.created_at|date:"d.m.Y H:i" }}
+    </p>
+    <p>
+        <strong>Срок выполнения:</strong>
+        {% if ticket.due_at %}
+            {{ ticket.due_at|date:"d.m.Y H:i" }}
+        {% else %}
+            Не установлен
+        {% endif %}
+    </p>
+
+    <h2>Описание проблемы</h2>
+    {{ ticket.description|linebreaks }}
+</div>
+{% endblock %}
