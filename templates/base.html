@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}HelpDesk{% endblock %}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f3f5f9;
+            color: #172033;
+        }
+        header {
+            background: #172033;
+            color: white;
+            padding: 18px 24px;
+        }
+        nav {
+            max-width: 1100px;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            flex-wrap: wrap;
+        }
+        nav a { color: white; text-decoration: none; }
+        .brand { font-size: 22px; font-weight: bold; }
+        .user { margin-left: auto; }
+        main {
+            max-width: 1100px;
+            margin: 32px auto;
+            padding: 0 16px;
+        }
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 18px #1720330a;
+        }
+        .login-card { max-width: 440px; margin: 60px auto; }
+        input {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 8px;
+            border: 1px solid #bbc4d3;
+            border-radius: 6px;
+        }
+        button {
+            background: #245ee8;
+            color: white;
+            border: 0;
+            border-radius: 6px;
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            padding: 14px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e9f0;
+        }
+        th { background: #f7f9fc; }
+        .errorlist { color: #b42318; }
+        .pagination {
+            display: flex;
+            gap: 16px;
+            margin-top: 24px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <nav>
+        <a class="brand" href="{% url 'tickets:list' %}">HelpDesk</a>
+
+        {% if user.is_authenticated %}
+            <span class="user">
+                {{ user.username }} ·
+                {% if user.is_superuser %}
+                    Администратор
+                {% else %}
+                    {{ user.get_role_display }}
+                {% endif %}
+            </span>
+
+            {% if user.is_staff %}
+                <a href="{% url 'admin:index' %}">Админка</a>
+            {% endif %}
+
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit">Выйти</button>
+            </form>
+        {% endif %}
+    </nav>
+</header>
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

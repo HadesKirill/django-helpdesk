@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Заявки — HelpDesk{% endblock %}
+
+{% block content %}
+<h1>Заявки</h1>
+<p>Доступно заявок: {{ page_obj.paginator.count }}</p>
+
+<div class="card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>№</th>
+                    <th>Название</th>
+                    <th>Статус</th>
+                    <th>Приоритет</th>
+                    <th>Заказчик</th>
+                    <th>Исполнитель</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                    <tr>
+                        <td>{{ ticket.pk }}</td>
+                        <td>{{ ticket.title }}</td>
+                        <td>{{ ticket.get_status_display }}</td>
+                        <td>{{ ticket.get_priority_display }}</td>
+                        <td>{{ ticket.customer }}</td>
+                        <td>{{ ticket.assignee|default:"Не назначен" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6">Доступных заявок пока нет.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}">
+                    Назад
+                </a>
+            {% endif %}
+
+            <span>
+                Страница {{ page_obj.number }}
+                из {{ page_obj.paginator.num_pages }}
+            </span>
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}">
+                    Вперёд
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
